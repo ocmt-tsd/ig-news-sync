@@ -1,0 +1,46 @@
+name: Instagram to Odoo News
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # every 30 minutes
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ig-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install "requests==2.32.3"
+
+      - name: Sync new posts
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          ODOO_WEBHOOK_URL: ${{ secrets.ODOO_WEBHOOK_URL }}
+          ODOO_SECRET: ${{ secrets.ODOO_SECRET }}
+          INCLUDE_REELS: "false"
+          BACKFILL: "false"
+        run: python ig_to_odoo.py
+
+      - name: Save state
+        if: always()
+        run: |
+          [ -f seen.json ] || exit 0
+          git config user.name "ig-sync-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add seen.json
+          git diff --cached --quiet || (git commit -m "ig-sync: update seen posts" && git push)
