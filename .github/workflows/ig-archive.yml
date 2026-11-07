@@ -2,6 +2,15 @@ name: Instagram full archive
 
 on:
   workflow_dispatch:
+    inputs:
+      since:
+        description: "Oldest date to include, YYYY-MM-DD (e.g. 2025-09-01)"
+        required: false
+        default: ""
+      max_posts:
+        description: "Max number of posts (0 = no limit)"
+        required: false
+        default: "0"
 
 permissions:
   contents: read
@@ -24,6 +33,8 @@ jobs:
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          SINCE: ${{ inputs.since }}
+          MAX_POSTS: ${{ inputs.max_posts }}
         run: python ig_archive.py
 
       - name: Upload archive
@@ -33,3 +44,4 @@ jobs:
           name: instagram-archive
           path: archive/
           retention-days: 14
+          compression-level: 0
