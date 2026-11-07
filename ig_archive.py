@@ -19,6 +19,8 @@ GRAPH = "https://graph.facebook.com/v27.0"
 OUT = os.environ.get("OUT_DIR", "archive")
 PAGE_SIZE = 50
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
+SINCE = os.environ.get("SINCE", "").strip()                 # YYYY-MM-DD: stop at posts older than this
+MAX_POSTS = int(os.environ.get("MAX_POSTS", "0") or 0)      # 0 = no limit (newest first)
 HEADERS = {"Authorization": f"Bearer {IG_TOKEN}"}
 
 IG_FIELDS = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp"
@@ -86,9 +88,15 @@ def download(url, folder, index):
 def main():
     os.makedirs(os.path.join(OUT, "images"), exist_ok=True)
     posts, failed = [], 0
-    for m in all_media():
+    for m in all_media():  # newest first
         mid = m["id"]
         day = (m.get("timestamp") or "")[:10] or "unknown"
+        if SINCE and day != "unknown" and day < SINCE:
+            print(f"reached {day} (older than SINCE={SINCE}), stopping")
+            break
+        if MAX_POSTS and len(posts) >= MAX_POSTS:
+            print(f"reached MAX_POSTS={MAX_POSTS}, stopping")
+            break
         rel = f"{day}_{mid}"
         folder = os.path.join(OUT, "images", rel)
         os.makedirs(folder, exist_ok=True)
